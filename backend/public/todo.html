@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+    }
+    .container {
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        text-align: center;
+    }
+    form {
+        margin-bottom: 20px;
+    }
+    label {
+        font-weight: bold;
+    }
+    input[type="text"], textarea {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    input[type="submit"], #show-all-btn, #logout-btn {
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        border-radius: 4px;
+        display: block;
+        margin: auto;
+        margin-bottom: 10px;
+    }
+    input[type="submit"]:hover, #show-all-btn:hover, #logout-btn:hover {
+        background-color: #0056b3;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    li {
+        padding: 10px;
+        background-color: #f9f9f9;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome Back </h1>
+        <button id="logout-btn">Log Out</button>
+        <form id="todo-form">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required>
+            <label for="description">Description:</label>
+            <textarea id="description" name="description"></textarea>
+            <input type="submit" value="Add Task">
+        </form>
+        <ul id="todo-list">
+        </ul>
+        <button id="show-all-btn"></button>
+    </div>
+
+    <script>
+        // Function to get userId from localStorage
+        function getUserIdFromLocalStorage() {
+            return localStorage.getItem('userId');
+        }
+
+        function getTokenFromLocalStorage() {
+            return localStorage.getItem('token');
+        }
+
+        document.getElementById('todo-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const userId = getUserIdFromLocalStorage(); // Get userId from localStorage
+            const token = getTokenFromLocalStorage();
+            
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${title}</strong>`;
+            if (description.trim() !== '') {
+                li.innerHTML += `: ${description}`;
+            }
+            document.getElementById('todo-list').appendChild(li);
+
+            document.getElementById('title').value = '';
+            document.getElementById('description').value = '';
+
+            // Send request to the server
+            fetch('http://localhost:1234/api/createToDo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    title: title,
+                    description: description,
+                    userId: userId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Task created successfully:', data);
+            })
+            .catch(error => {
+                console.error('There was a problem creating the task:', error);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = getTokenFromLocalStorage();
+            const userId = getUserIdFromLocalStorage();
+
+            fetch(`http://localhost:1234/api/usertodos/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Tasks retrieved successfully:', data);
+                for (let i = 0; i < data.rez.length; i++) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${data.rez[i].title}</strong>`;
+                    if (data.rez[i].description.trim() !== '') {
+                        li.innerHTML += `: ${data.rez[i].description}`;
+                    }
+                    document.getElementById('todo-list').appendChild(li);
+                }  
+            })
+            .catch(error => {
+                console.error('There was a problem retrieving the tasks:', error.message);
+            });
+        });
+
+        document.getElementById('show-all-btn').addEventListener('click', function() {
+            const tasks = document.querySelectorAll('#todo-list li');
+            tasks.forEach(task => {
+                task.style.display = 'block';
+            });
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            // Clear localStorage
+            localStorage.removeItem('userId');
+            localStorage.removeItem('token');
+            // Redirect to sign-in page
+            window.location.href = 'http://localhost:1234/login.html';
+        });
+        </script>
+    </body>
+</html>
